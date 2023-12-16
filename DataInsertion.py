@@ -22,10 +22,10 @@ def generate_uuid():
     """Generate a UUID as a 16-byte string."""
     return uuid.uuid4().bytes
 
-def insert_crypto(cursor, name, symbol):
+def insert_crypto(cursor, name, symbol, image):
     crypto_id = generate_uuid()
-    insert_query = "INSERT INTO crypto (id, name, symbol) VALUES (%s, %s, %s)"
-    cursor.execute(insert_query, (crypto_id, name, symbol))
+    insert_query = "INSERT INTO crypto (id, name, symbol, image) VALUES (%s, %s, %s, %s)"
+    cursor.execute(insert_query, (crypto_id, name, symbol, image))
     return crypto_id
 
 def insert_price_data(cursor, crypto_id, date, high, low, open_price, close, volume, marketcap):
@@ -50,14 +50,19 @@ def main():
             with connection.cursor() as cursor:
                 # List all CSV files in the 'crypto_dataset' directory
                 csv_files = glob.glob('crypto_dataset/*.csv')
-                
+                image_data = read_csv('images.csv')
+
                 for file_path in csv_files:
                     print(f"Processing file: {file_path}")
                     csv_data = read_csv(file_path)
                     _, name, symbol, _, _, _, _, _, _, _ = csv_data[0]
-                    crypto_id = insert_crypto(cursor, name, symbol)
+                    for img_row in image_data:
+                        if img_row[0] == symbol:
+                            image_url = img_row[1]
+                            break
+                    crypto_id = insert_crypto(cursor, name, symbol, image_url)
                     for row in csv_data:
-                        _, name, symbol, date, high, low, open, close, volume, marketcap = row
+                        _, name, symbol, date, high, low, open, close, volume, marketcap = row                    
                         insert_price_data(cursor, crypto_id, date, high, low, open, close, volume, marketcap)
                 connection.commit()
                 print("Data inserted successfully")
